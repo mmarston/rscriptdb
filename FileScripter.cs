@@ -946,8 +946,7 @@ namespace Mercent.AWS.Redshift
 						if(isFirstBatch)
 							isFirstBatch = false;
 						else
-							writer.WriteLine(";");
-						writer.WriteLine();
+							writer.Write(";\r\n\r\n");
 						writer.Write(insertClause);
 						writer.Write(" VALUES\r\n(\r\n\t");
 					}
