@@ -58,6 +58,6 @@ namespace Mercent.AWS.Redshift
 		/// where KEY distribution is not appropriate, but performance improvements must be weighed
 		/// against maintenance costs.
 		/// </remarks>
-		All = 2
+		All = 8
 	}
 }
