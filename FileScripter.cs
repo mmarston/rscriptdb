@@ -838,32 +838,49 @@ namespace Mercent.AWS.Redshift
 		void ScriptTableColumn(TextWriter writer, Column column)
 		{
 			// Name
-			writer.Write(column.GetQuotedName(this.QuoteMode));
-			writer.Write('\t');
+			string quotedName = column.GetQuotedName(this.QuoteMode);
+			writer.Write(quotedName);
+
+			// Pad with spaces between the name and data type to make them take up 50 characters.
+			// This will fit a 25 char name + one space + 24 char data type (e.g. "character varying(65535)").
+			int nameAndTypeLength = quotedName.Length + column.DataType.Length;
+			int paddingLength = 50 - nameAndTypeLength;
+			if(paddingLength < 1)
+				writer.Write(' ');
+			else
+				writer.Write(new String(' ', paddingLength));
 
 			// Data Type
 			writer.Write(column.DataType);
 
 			// Nullable
+			// Note that we right align this.
 			if(column.IsNullable)
-				writer.Write("\tNULL");
+				writer.Write("     NULL");
 			else
-				writer.Write("\tNOT NULL");
-
-			// Default Value
-			if(column.DefaultValue != null)
-			{
-				writer.Write('\t');
-				if(!column.DefaultValue.StartsWith("IDENTITY(", StringComparison.OrdinalIgnoreCase))
-					writer.Write("DEFAULT ");
-				writer.Write(column.DefaultValue);
-			}
+				writer.Write(" NOT NULL");
 
 			// Compression Encoding
 			if(column.HasCompressionEncoding)
 			{
-				writer.Write("\tENCODE ");
-				writer.Write(column.CompressionEncoding.ToUpper());
+				writer.Write(" ENCODE ");
+				// Attempt to right align the encoding type by left padding it
+				// to a length of 9 characters ("runlength" is 9 characters).
+				writer.Write(column.CompressionEncoding.ToUpper().PadLeft(9));
+			}
+
+			// Default Value
+			if(column.DefaultValue != null)
+			{
+				// If the column does not have a compression encoding then add enough padding
+				// to make the the word "DEFAULT" align with other columns that do have an encoding.
+				if(column.HasCompressionEncoding)
+					writer.Write(' ');
+				else
+					writer.Write(new String(' ', 18));
+				if(!column.DefaultValue.StartsWith("IDENTITY(", StringComparison.OrdinalIgnoreCase))
+					writer.Write("DEFAULT ");
+				writer.Write(column.DefaultValue);
 			}
 		}
 
@@ -1033,6 +1050,9 @@ namespace Mercent.AWS.Redshift
 			}
 
 			ScriptDescription(writer, view, true);
+
+			// Column Descriptions.
+			ScriptDescriptions(writer, view.Columns, true);
 		}
 
 		void ScriptViewHeader(TextWriter writer, View view)
