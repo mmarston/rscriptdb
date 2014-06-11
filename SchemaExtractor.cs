@@ -44,6 +44,11 @@ namespace Mercent.AWS.Redshift
 			return RedshiftUtility.ExecuteReader(connection, query, parameters);
 		}
 
+		object ExecuteScalar(string query, params NpgsqlParameter[] parameters)
+		{
+			return RedshiftUtility.ExecuteScalar(connection, query, parameters);
+		}
+
 		/// <summary>
 		/// Gets a nullable boolean from a record and using default value when null.
 		/// </summary>
@@ -316,6 +321,62 @@ ORDER BY nsp.nspname;
 			}
 		}
 
+		void LoadTableRowCount(Database database)
+		{
+			// First check and break out if the user does not have the SELECT privilege on pg_catalog.stv_tbl_perm.
+			bool hasPrivilege = (bool)ExecuteScalar("SELECT has_table_privilege('pg_catalog.stv_tbl_perm', 'SELECT');");
+			if(!hasPrivilege)
+				return;
+
+			// I was unable to write a Redshift query that combined the row count query below
+			// with the table and view query in the LoadTablesAndViews. I suspect it has to do
+			// with features that are only supported on the leader node.
+			// In LoadTablesAndViews we use an estimated row count from the reltuples column of
+			// pg_catalog.pg_class. This is only updated when the ANALYZE command is run
+			// however a user does not need to be a super user get this value.
+			// The approach below using pg_catalog.stv_tbl_perm gives a more accurate count
+			// and does not depend on ANALYZE but only works for super users.
+			string query =
+@"
+WITH TableRowCount AS
+(
+	SELECT id, SUM(rows) AS rows
+	FROM pg_catalog.stv_tbl_perm
+	GROUP BY id
+)
+SELECT
+	-- For some reason in this query the Table and Schema columns
+	-- were returned as char (with trailing space) instead of varchar.
+	-- Casting to varchar avoids the need to trim.
+	-- The columns are actually of the 'name' type which is defined as char(128).
+	c.relname::varchar(128) AS Table,
+	nsp.nspname::varchar(128) AS Schema,
+	COALESCE(trc.rows, c.reltuples::bigint) AS EstimatedRowCount
+FROM pg_catalog.pg_class AS c
+	INNER JOIN pg_catalog.pg_namespace AS nsp ON nsp.oid = c.relnamespace
+	INNER JOIN TableRowCount AS trc ON trc.id = c.oid
+WHERE c.relkind = 'r'
+	AND nsp.nspname NOT IN ('information_schema', 'pg_catalog', 'pg_internal', 'pg_toast')
+	AND nsp.nspname NOT LIKE 'pg_temp_%'
+ORDER BY nsp.nspname, c.relname;
+";
+
+			using(NpgsqlDataReader reader = ExecuteReader(query))
+			{
+				TableRowCountOrdinals ordinals = reader.GetOrdinals<TableRowCountOrdinals>();
+				while(reader.Read())
+				{
+					string schemaName = reader.GetString(ordinals.Schema);
+					var schema = database.Schemas[schemaName];
+
+					string tableName = reader.GetString(ordinals.Table);
+					var table = schema.Tables[tableName];
+
+					table.EstimatedRowCount = reader.GetInt64(ordinals.EstimatedRowCount);
+				}
+			}
+		}
+
 		void LoadTablesAndViews(Database database)
 		{
 			string query =
@@ -341,11 +402,6 @@ WHERE c.relkind IN ('r', 'v')
 	AND nsp.nspname NOT LIKE 'pg_temp_%'
 ORDER BY nsp.nspname, c.relname;
 ";
-
-			// I wasn't able to get this query to be combined with the query above:
-			//SELECT id, SUM(rows) AS rows
-			//FROM pg_catalog.stv_tbl_perm
-			//GROUP BY id
 
 			using(NpgsqlDataReader reader = ExecuteReader(query))
 			{
@@ -383,6 +439,9 @@ ORDER BY nsp.nspname, c.relname;
 					}
 				}
 			}
+
+			// Now try to load more accurate table row counts.
+			LoadTableRowCount(database);
 		}
 
 		#region IDisposable Members

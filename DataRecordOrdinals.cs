@@ -107,6 +107,16 @@ namespace Mercent.AWS.Redshift
 	}
 
 	/// <summary>
+	/// Provides the column ordinals for data reader to use when getting information about table row counts.
+	/// </summary>
+	class TableRowCountOrdinals : DataRecordOrdinals
+	{
+		public int EstimatedRowCount { get; set; }
+		public int Schema { get; set; }
+		public int Table { get; set; }
+	}
+
+	/// <summary>
 	/// Provides the column ordinals for data reader to use when getting information about tables and views.
 	/// </summary>
 	class TableAndViewOrdinals : DataRecordOrdinals

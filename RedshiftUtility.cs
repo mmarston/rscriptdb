@@ -215,6 +215,21 @@ namespace Mercent.AWS.Redshift
 			}
 		}
 
+		public static object ExecuteScalar(NpgsqlConnection connection, string query, params NpgsqlParameter[] parameters)
+		{
+			if(connection == null)
+				throw new ArgumentNullException("connection");
+			if(query == null)
+				throw new ArgumentNullException("query");
+
+			using(var command = new NpgsqlCommand(query, connection))
+			{
+				if(parameters != null)
+					command.Parameters.AddRange(parameters);
+				return command.ExecuteScalar();
+			}
+		}
+
 		public static string GetQualifiedName(string parentName, string localName, QuoteMode mode = QuoteMode.WhenNecessary)
 		{
 			if(String.IsNullOrEmpty(parentName))
