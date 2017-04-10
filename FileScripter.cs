@@ -53,6 +53,7 @@ namespace Mercent.AWS.Redshift
 			this.MaxRowCount = 100000;
 			this.OutputDirectory = String.Empty;
 			this.QuoteMode = QuoteMode.WhenNecessary;
+			this.IgnoreDataFile = false;
 
 			// Open the connection.
 			connection = new NpgsqlConnection(connectionString);
@@ -95,6 +96,8 @@ namespace Mercent.AWS.Redshift
 		/// The default value is 100,000.
 		/// </remarks>
 		public int MaxRowCount { get; set; }
+
+		public bool IgnoreDataFile { get; set; }
 
 		public string OutputDirectory { get; set; }
 
@@ -900,6 +903,10 @@ namespace Mercent.AWS.Redshift
 
 		void ScriptTableData(Table table)
 		{
+			// If --id is specified, do not generate data.
+			if(IgnoreDataFile)
+				return;
+
 			// If the table does not have any rows then skip querying it for data.
 			if(table.EstimatedRowCount == 0)
 				return;
