@@ -10,7 +10,7 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("Mercent")]
 [assembly: AssemblyProduct("RScriptDB")]
-[assembly: AssemblyCopyright("Copyright © Mercent 2014")]
+[assembly: AssemblyCopyright("Copyright © 2005-2016 Commerce Technologies, LLC")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 
