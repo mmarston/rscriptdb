@@ -59,6 +59,11 @@ namespace Mercent.AWS.Redshift
 					}
 					scripter.ForceContinue = false;
 				}
+				else if(String.Equals(arg, "--id", StringComparison.OrdinalIgnoreCase))
+				{
+					scripter.IgnoreDataFile = true;
+				}
+
 				else if(String.IsNullOrEmpty(scripter.OutputDirectory))
 				{
 					scripter.OutputDirectory = arg;
@@ -80,7 +85,7 @@ namespace Mercent.AWS.Redshift
 			Console.WriteLine
 			(
 				"Usage:\r\n"
-					+ "\t{0} <ConnectionString> [<OutDirectory>] [-f|-n]\r\n",
+					+ "\t{0} <ConnectionString> [<OutDirectory>] [-f|-n] --id\r\n",
 				program
 			);
 		}
